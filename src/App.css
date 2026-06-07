@@ -335,3 +335,388 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+.resumen-detectado-editable {
+  margin-top: 16px;
+}
+
+.form-resumen-detectado {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.form-resumen-detectado label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.advertencia-suave {
+  background: #422006;
+  color: #fed7aa;
+  border: 1px solid #92400e;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+@media (max-width: 800px) {
+  .form-resumen-detectado {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Corrección visual fuerte: resumen por bancos ===== */
+
+.panel-bancos {
+  text-align: left !important;
+  border-color: #0f766e;
+}
+
+.panel-bancos h2,
+.panel-bancos h3,
+.panel-bancos p {
+  text-align: left !important;
+}
+
+.bancos-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.bancos-titulo h2 {
+  margin: 4px 0 0;
+}
+
+.bancos-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.banco-card {
+  width: 100%;
+  background: linear-gradient(135deg, #020617, #0f172a) !important;
+  border: 1px solid #1f2937 !important;
+  color: #e5e7eb !important;
+  border-radius: 18px !important;
+  padding: 18px !important;
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  gap: 14px !important;
+  align-items: center !important;
+  text-align: left !important;
+  transition: 0.2s ease;
+  box-shadow: none !important;
+}
+
+.banco-card:hover,
+.banco-card.activo {
+  background: linear-gradient(135deg, #064e3b, #0f766e) !important;
+  border-color: #34d399 !important;
+  transform: translateY(-2px);
+}
+
+.banco-icono {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #0f766e;
+  color: #ccfbf1;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.banco-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.banco-info strong {
+  font-size: 20px;
+  color: #f8fafc;
+}
+
+.banco-info span {
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.banco-flecha {
+  color: #99f6e4;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.bloque-banco {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #1f2937;
+}
+
+.cabecera-banco {
+  background: #020617;
+  border: 1px solid #1f2937;
+  border-radius: 18px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.cabecera-banco h3 {
+  margin: 0;
+  font-size: 30px;
+  color: #99f6e4;
+}
+
+.mini-resumen-banco {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.mini-resumen-banco div {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.mini-resumen-banco span {
+  display: block;
+  color: #9ca3af;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.mini-resumen-banco strong {
+  color: #22c55e;
+  font-size: 20px;
+}
+
+.productos-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.producto-tab {
+  background: #020617 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #334155 !important;
+  border-radius: 999px !important;
+  padding: 12px 18px !important;
+  display: flex !important;
+  gap: 10px;
+  align-items: center;
+  width: auto !important;
+}
+
+.producto-tab span {
+  color: #f8fafc;
+}
+
+.producto-tab small {
+  color: #94a3b8;
+}
+
+.producto-tab:hover,
+.producto-tab.activo {
+  background: #0f766e !important;
+  border-color: #34d399 !important;
+}
+
+.producto-header {
+  margin-bottom: 18px;
+}
+
+.cards-producto {
+  margin-bottom: 24px;
+}
+
+.compras-header {
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.compras-header h3 {
+  margin-bottom: 4px;
+  color: #99f6e4;
+}
+
+.compras-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compra-card {
+  background: #020617;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1.7fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.compra-card:hover {
+  border-color: #0f766e;
+}
+
+.compra-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compra-main strong {
+  color: #f8fafc;
+  font-size: 17px;
+}
+
+.compra-main span {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.compra-montos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compra-montos span {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.compra-montos strong {
+  color: #22c55e;
+  font-size: 20px;
+}
+
+.compra-montos small {
+  color: #94a3b8;
+}
+
+.compra-acciones {
+  justify-content: flex-end;
+}
+
+.sin-compras {
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sin-compras strong {
+  color: #f8fafc;
+}
+
+.sin-compras span {
+  color: #94a3b8;
+}
+
+@media (max-width: 1000px) {
+  .cabecera-banco {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-resumen-banco {
+    grid-template-columns: 1fr;
+  }
+
+  .compra-card {
+    grid-template-columns: 1fr;
+  }
+
+  .compra-acciones {
+    justify-content: flex-start;
+  }
+}
+
+.moneda-usd {
+  color: #fbbf24 !important;
+  font-weight: bold;
+}
+
+.moneda-ars {
+  color: #94a3b8 !important;
+}
+
+.monto-usd,
+.cards-mini small,
+.mini-resumen-banco small {
+  display: block;
+  color: #38bdf8;
+  font-size: 13px;
+  margin-top: 6px;
+  font-weight: bold;
+}
+
+.compra-card.dolar {
+  border-color: #38bdf8;
+}
+
+.moneda-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #082f49;
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+/* Moneda de consumos: mismo color verde, solo cambia el símbolo */
+.compra-montos strong {
+  color: #22c55e !important;
+}
+
+.texto-moneda {
+  color: #94a3b8 !important;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.monto-usd {
+  color: #22c55e !important;
+  font-size: 13px;
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+/* Quitar duplicados visuales de moneda */
+.texto-moneda {
+  display: none !important;
+}
+
+/* Los montos en USD usan el mismo verde que los pesos */
+.compra-montos strong {
+  color: #22c55e !important;
+}
+
+.compra-montos small {
+  color: #94a3b8 !important;
+}

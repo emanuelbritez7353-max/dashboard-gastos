@@ -124,6 +124,119 @@ function formatearFecha(fechaISO) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+function obtenerClaveMes(fechaISO) {
+  const fecha = crearFechaLocal(fechaISO);
+
+  if (!fecha) {
+    return "";
+  }
+
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function obtenerClaveMesFecha(fecha) {
+  if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+    return "";
+  }
+
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function crearFechaDesdeClaveMes(claveMes) {
+  const partes = String(claveMes).split("-");
+
+  if (partes.length !== 2) {
+    return null;
+  }
+
+  const anio = Number(partes[0]);
+  const mes = Number(partes[1]) - 1;
+  const fecha = new Date(anio, mes, 1);
+
+  if (Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+
+  return fecha;
+}
+
+function formatearClaveMes(claveMes) {
+  const fecha = crearFechaDesdeClaveMes(claveMes);
+
+  if (!fecha) {
+    return "Sin mes";
+  }
+
+  return fecha.toLocaleDateString("es-AR", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function obtenerClaveMesAnterior(claveMes) {
+  const fecha = crearFechaDesdeClaveMes(claveMes);
+
+  if (!fecha) {
+    return "";
+  }
+
+  fecha.setMonth(fecha.getMonth() - 1);
+
+  return obtenerClaveMesFecha(fecha);
+}
+
+function crearFechaLocal(fechaISO) {
+  if (!fechaISO) {
+    return null;
+  }
+
+  const partes = String(fechaISO).split("-");
+
+  if (partes.length !== 3) {
+    return null;
+  }
+
+  const anio = Number(partes[0]);
+  const mes = Number(partes[1]) - 1;
+  const dia = Number(partes[2]);
+  const fecha = new Date(anio, mes, dia);
+
+  if (Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+
+  return fecha;
+}
+
+function diferenciaEnDias(fechaDesde, fechaHasta) {
+  const unDia = 1000 * 60 * 60 * 24;
+  const desde = new Date(
+    fechaDesde.getFullYear(),
+    fechaDesde.getMonth(),
+    fechaDesde.getDate()
+  );
+  const hasta = new Date(
+    fechaHasta.getFullYear(),
+    fechaHasta.getMonth(),
+    fechaHasta.getDate()
+  );
+
+  return Math.round((hasta - desde) / unDia);
+}
+
+function describirVencimiento(dias) {
+  if (dias < 0) {
+    const diasVencido = Math.abs(dias);
+    return `Venció hace ${diasVencido} día${diasVencido === 1 ? "" : "s"}`;
+  }
+
+  if (dias === 0) {
+    return "Vence hoy";
+  }
+
+  return `Vence en ${dias} día${dias === 1 ? "" : "s"}`;
+}
+
 function convertirFecha(fechaTexto) {
   const meses = {
     ene: "01",
@@ -1134,6 +1247,58 @@ function calcularProductoDesdeEntidad(item) {
   return "Otros";
 }
 
+function inicializarMes(claveMes) {
+  return {
+    claveMes,
+    etiqueta: formatearClaveMes(claveMes),
+    totalPesos: 0,
+    totalDolares: 0,
+    pagoMinimo: 0,
+    deudaFutura: 0,
+    bancos: new Set(),
+    tarjetas: new Set(),
+    consumos: [],
+    cantidadResumenes: 0,
+  };
+}
+
+function calcularDeudaFuturaDelMes(gastos, claveMes) {
+  const fechaMes = crearFechaDesdeClaveMes(claveMes);
+
+  if (!fechaMes) {
+    return 0;
+  }
+
+  const indiceMes = fechaMes.getFullYear() * 12 + fechaMes.getMonth();
+
+  return gastos.reduce((total, gasto) => {
+    const fechaCompra = crearFechaLocal(gasto.fechaCompra);
+
+    if (!fechaCompra) {
+      return total;
+    }
+
+    const indiceCompra = fechaCompra.getFullYear() * 12 + fechaCompra.getMonth();
+
+    if (indiceCompra > indiceMes) {
+      return total;
+    }
+
+    const indiceFin = indiceCompra + Number(gasto.cuotas || 1) - 1;
+    const cuotasRestantes = indiceFin - indiceMes;
+
+    if (cuotasRestantes <= 0 || gasto.moneda === "USD") {
+      return total;
+    }
+
+    return total + Number(gasto.valorCuota || 0) * cuotasRestantes;
+  }, 0);
+}
+
+function calcularCambio(actual, anterior) {
+  return Number((Number(actual || 0) - Number(anterior || 0)).toFixed(2));
+}
+
 
 
 function corregirResumenesGuardados(resumenes) {
@@ -1177,6 +1342,7 @@ export default function App() {
   const [resumenPDF, setResumenPDF] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState("");
   const [productoSeleccionado, setProductoSeleccionado] = useState("");
+  const [mesHistorialSeleccionado, setMesHistorialSeleccionado] = useState("");
 
   useEffect(() => {
     const gastosPorEntidad = {};
@@ -1252,6 +1418,8 @@ export default function App() {
           fechaPago: "",
           totalResumen: 0,
           totalDolares: 0,
+          dolaresConsumos: 0,
+          dolaresResumen: 0,
           pagoMinimo: 0,
           cuotasMes: 0,
           deudaPendiente: 0,
@@ -1262,7 +1430,7 @@ export default function App() {
       entidades[entidad].consumos.push(gasto);
 
       if (gasto.moneda === "USD") {
-        entidades[entidad].totalDolares += Number(
+        entidades[entidad].dolaresConsumos += Number(
           gasto.montoDolares || gasto.valorCuota || 0
         );
         return;
@@ -1283,6 +1451,8 @@ export default function App() {
           fechaPago: "",
           totalResumen: 0,
           totalDolares: 0,
+          dolaresConsumos: 0,
+          dolaresResumen: 0,
           pagoMinimo: 0,
           cuotasMes: 0,
           deudaPendiente: 0,
@@ -1303,7 +1473,7 @@ export default function App() {
       entidades[entidad].totalResumen += totalPesosResumen;
 
       if (totalDolaresResumen > 0) {
-        entidades[entidad].totalDolares = totalDolaresResumen;
+        entidades[entidad].dolaresResumen += totalDolaresResumen;
       }
 
       entidades[entidad].pagoMinimo += Number(resumen.pagoMinimo || 0);
@@ -1311,6 +1481,10 @@ export default function App() {
 
     return Object.values(entidades).map((item) => ({
       ...item,
+      totalDolares:
+        Number(item.dolaresResumen || 0) > 0
+          ? Number(item.dolaresResumen || 0)
+          : Number(item.dolaresConsumos || 0),
       totalAPagarMes:
         Number(item.totalResumen || 0) > 0
           ? Number(item.totalResumen || 0)
@@ -1325,6 +1499,11 @@ export default function App() {
 
   const totalPagoMinimo = resumenPorEntidad.reduce(
     (total, item) => total + item.pagoMinimo,
+    0
+  );
+
+  const totalDolaresMes = resumenPorEntidad.reduce(
+    (total, item) => total + Number(item.totalDolares || 0),
     0
   );
 
@@ -1359,6 +1538,151 @@ export default function App() {
       total,
     }));
   }, [gastosCalculados]);
+
+  const historialMensual = useMemo(() => {
+    const meses = {};
+    const claveMesActual = obtenerClaveMesFecha(new Date());
+
+    resumenesPago.forEach((resumen) => {
+      const claveMes = obtenerClaveMes(resumen.fechaPago);
+
+      if (!claveMes) {
+        return;
+      }
+
+      if (!meses[claveMes]) {
+        meses[claveMes] = inicializarMes(claveMes);
+      }
+
+      const totalDolares = Number(resumen.totalDolares || 0);
+      const totalPesos = corregirTotalPesosConDolares(
+        Number(resumen.totalPagar || 0),
+        totalDolares
+      );
+
+      meses[claveMes].totalPesos += totalPesos;
+      meses[claveMes].totalDolares += totalDolares;
+      meses[claveMes].pagoMinimo += Number(resumen.pagoMinimo || 0);
+      meses[claveMes].bancos.add(calcularBancoDesdeEntidad(resumen.entidad));
+      meses[claveMes].tarjetas.add(resumen.entidad || "Sin entidad");
+      meses[claveMes].cantidadResumenes += 1;
+    });
+
+    gastosCalculados.forEach((gasto) => {
+      const claveMes = obtenerClaveMes(gasto.fechaCompra) || claveMesActual;
+
+      if (!meses[claveMes]) {
+        meses[claveMes] = inicializarMes(claveMes);
+      }
+
+      meses[claveMes].consumos.push(gasto);
+      meses[claveMes].bancos.add(calcularBancoDesdeEntidad(gasto.tarjeta));
+      meses[claveMes].tarjetas.add(gasto.tarjeta || "Sin entidad");
+
+      if (!meses[claveMes].cantidadResumenes) {
+        if (gasto.moneda === "USD") {
+          meses[claveMes].totalDolares += Number(
+            gasto.montoDolares || gasto.valorCuota || 0
+          );
+        } else {
+          meses[claveMes].totalPesos += Number(gasto.valorCuota || 0);
+        }
+      }
+    });
+
+    if (!Object.keys(meses).length) {
+      meses[claveMesActual] = inicializarMes(claveMesActual);
+    }
+
+    return Object.values(meses)
+      .map((mes) => ({
+        ...mes,
+        totalPesos: Number(mes.totalPesos.toFixed(2)),
+        totalDolares: Number(mes.totalDolares.toFixed(2)),
+        pagoMinimo: Number(mes.pagoMinimo.toFixed(2)),
+        deudaFutura: Number(
+          calcularDeudaFuturaDelMes(gastosCalculados, mes.claveMes).toFixed(2)
+        ),
+        bancos: [...mes.bancos].filter(Boolean).sort(),
+        tarjetas: [...mes.tarjetas].filter(Boolean).sort(),
+        consumos: [...mes.consumos].sort((a, b) =>
+          String(b.fechaCompra || "").localeCompare(String(a.fechaCompra || ""))
+        ),
+      }))
+      .sort((a, b) => b.claveMes.localeCompare(a.claveMes));
+  }, [gastosCalculados, resumenesPago]);
+
+  useEffect(() => {
+    if (!historialMensual.length) {
+      return;
+    }
+
+    const existeMesSeleccionado = historialMensual.some(
+      (mes) => mes.claveMes === mesHistorialSeleccionado
+    );
+
+    if (!mesHistorialSeleccionado || !existeMesSeleccionado) {
+      setMesHistorialSeleccionado(historialMensual[0].claveMes);
+    }
+  }, [historialMensual, mesHistorialSeleccionado]);
+
+  const historialMesActual =
+    historialMensual.find((mes) => mes.claveMes === mesHistorialSeleccionado) ||
+    historialMensual[0] ||
+    null;
+
+  const comparacionMesAnterior = useMemo(() => {
+    const mesesConResumen = historialMensual.filter((mes) => mes.cantidadResumenes > 0);
+
+    if (mesesConResumen.length < 2) {
+      return null;
+    }
+
+    const mesActual = mesesConResumen[0];
+    const claveMesAnterior = obtenerClaveMesAnterior(mesActual.claveMes);
+    const mesAnterior =
+      mesesConResumen.find((mes) => mes.claveMes === claveMesAnterior) ||
+      mesesConResumen[1];
+
+    if (!mesAnterior) {
+      return null;
+    }
+
+    const diferenciaPesos = calcularCambio(
+      mesActual.totalPesos,
+      mesAnterior.totalPesos
+    );
+    const diferenciaDolares = calcularCambio(
+      mesActual.totalDolares,
+      mesAnterior.totalDolares
+    );
+    const diferenciaPagoMinimo = calcularCambio(
+      mesActual.pagoMinimo,
+      mesAnterior.pagoMinimo
+    );
+    const diferenciaDeudaFutura = calcularCambio(
+      mesActual.deudaFutura,
+      mesAnterior.deudaFutura
+    );
+
+    let estadoGasto = "Se mantuvo estable respecto del mes anterior.";
+
+    if (diferenciaPesos > 0 || diferenciaDolares > 0) {
+      estadoGasto = "El gasto subió respecto del mes anterior.";
+    } else if (diferenciaPesos < 0 || diferenciaDolares < 0) {
+      estadoGasto = "El gasto bajó respecto del mes anterior.";
+    }
+
+    return {
+      mesActual,
+      mesAnterior,
+      diferenciaPesos,
+      diferenciaDolares,
+      diferenciaPagoMinimo,
+      diferenciaDeudaFutura,
+      estadoGasto,
+    };
+  }, [historialMensual]);
 
 
   const vistaPorBanco = useMemo(() => {
@@ -1443,6 +1767,112 @@ export default function App() {
       ? bancoActual.productos[productoSeleccionado]
       : null;
 
+  const resumenMensualInteligente = useMemo(() => {
+    const hoy = new Date();
+    const entidadesConFecha = resumenPorEntidad
+      .map((item) => ({
+        ...item,
+        fechaPagoDate: crearFechaLocal(item.fechaPago),
+      }))
+      .filter((item) => item.fechaPagoDate);
+
+    const proximosVencimientos = [...entidadesConFecha].sort(
+      (a, b) => a.fechaPagoDate - b.fechaPagoDate
+    );
+
+    const proximoVigente =
+      proximosVencimientos.find(
+        (item) => diferenciaEnDias(hoy, item.fechaPagoDate) >= 0
+      ) || proximosVencimientos[0] || null;
+
+    const bancoMayorGasto = bancosDisponibles.length
+      ? [...bancosDisponibles].sort(
+          (a, b) => Number(b.totalAPagar || 0) - Number(a.totalAPagar || 0)
+        )[0]
+      : null;
+
+    const tarjetaMayorGasto = resumenPorEntidad.length
+      ? [...resumenPorEntidad].sort(
+          (a, b) => Number(b.totalAPagarMes || 0) - Number(a.totalAPagarMes || 0)
+        )[0]
+      : null;
+
+    const alertas = [];
+    const porcentajePagoMinimo =
+      totalAPagarMes > 0 ? (totalPagoMinimo / totalAPagarMes) * 100 : 0;
+
+    if (proximoVigente) {
+      const dias = diferenciaEnDias(hoy, proximoVigente.fechaPagoDate);
+
+      if (dias <= 7) {
+        alertas.push({
+          tipo: dias < 0 ? "critica" : "aviso",
+          titulo: "Vencimiento próximo",
+          detalle: `Tenés un vencimiento próximo el ${formatearFecha(
+            proximoVigente.fechaPago
+          )}.`,
+        });
+      }
+    }
+
+    if (totalDolaresMes > 0) {
+      alertas.push({
+        tipo: "info",
+        titulo: "Consumos en dólares",
+        detalle: `Tus consumos en dólares suman ${formatearDolares(
+          totalDolaresMes
+        )}.`,
+      });
+    }
+
+    if (tarjetaMayorGasto && Number(tarjetaMayorGasto.totalAPagarMes || 0) > 0) {
+      alertas.push({
+        tipo: "aviso",
+        titulo: "Tarjeta con mayor gasto",
+        detalle: `La tarjeta ${tarjetaMayorGasto.entidad} representa el mayor gasto del mes.`,
+      });
+    }
+
+    if (totalDeudaPendiente > 0) {
+      alertas.push({
+        tipo: "info",
+        titulo: "Deuda futura en cuotas",
+        detalle: `Tenés ${formatearDinero(totalDeudaPendiente)} de deuda futura en cuotas.`,
+      });
+    }
+
+    if (porcentajePagoMinimo >= 50) {
+      alertas.push({
+        tipo: "critica",
+        titulo: "Pago mínimo alto",
+        detalle: "El pago mínimo representa un porcentaje alto del total.",
+      });
+    }
+
+    return {
+      totalPesos: totalAPagarMes,
+      totalDolares: totalDolaresMes,
+      pagoMinimo: totalPagoMinimo,
+      proximoVencimiento: proximoVigente,
+      estadoProximoVencimiento: proximoVigente
+        ? describirVencimiento(diferenciaEnDias(hoy, proximoVigente.fechaPagoDate))
+        : "",
+      bancoMayorGasto,
+      tarjetaMayorGasto,
+      cantidadConsumos: gastosCalculados.length,
+      deudaFutura: totalDeudaPendiente,
+      alertas,
+    };
+  }, [
+    bancosDisponibles,
+    gastosCalculados.length,
+    resumenPorEntidad,
+    totalAPagarMes,
+    totalDeudaPendiente,
+    totalDolaresMes,
+    totalPagoMinimo,
+  ]);
+
 
   function actualizarFormulario(evento) {
     const { name, value } = evento.target;
@@ -1457,6 +1887,10 @@ export default function App() {
   function guardarGasto(evento) {
     evento.preventDefault();
 
+    const gastoOriginal = formulario.id
+      ? gastos.find((gasto) => gasto.id === formulario.id)
+      : null;
+
     const gastoGuardado = {
       id: formulario.id || crypto.randomUUID(),
       descripcion: formulario.descripcion,
@@ -1466,6 +1900,18 @@ export default function App() {
       cuotaActual: Number(formulario.cuotaActual),
       fechaCompra: formulario.fechaCompra,
       tarjeta: formulario.tarjeta,
+      moneda: gastoOriginal?.moneda || "ARS",
+      montoOriginal: Number(gastoOriginal?.montoOriginal || formulario.montoTotal || 0),
+      montoPesos:
+        gastoOriginal?.moneda === "USD"
+          ? Number(gastoOriginal?.montoPesos || 0)
+          : Number(formulario.montoTotal || 0),
+      montoDolares:
+        gastoOriginal?.moneda === "USD"
+          ? Number(gastoOriginal?.montoDolares || formulario.montoTotal || 0)
+          : 0,
+      origen: gastoOriginal?.origen,
+      lineaOriginal: gastoOriginal?.lineaOriginal,
     };
 
     if (gastoGuardado.cuotaActual > gastoGuardado.cuotas) {
@@ -1660,6 +2106,162 @@ function importarTodoPDF() {
 
   return (
     <main className="contenedor">
+      <section className="panel panel-inteligente">
+        <div className="encabezado-panel resumen-inteligente-header">
+          <div>
+            <p className="etiqueta">Resumen automático</p>
+            <h2>Resumen mensual inteligente</h2>
+            <p className="texto-ayuda">
+              Consolidado mensual en pesos y dólares, alertas y detección de
+              prioridades de pago.
+            </p>
+          </div>
+        </div>
+
+        <div className="resumen-inteligente-grid">
+          <div className="tarjeta tarjeta-destacada">
+            <span>Total a pagar en pesos del mes</span>
+            <strong>{formatearDinero(resumenMensualInteligente.totalPesos)}</strong>
+          </div>
+
+          <div className="tarjeta">
+            <span>Total a pagar en dólares del mes</span>
+            <strong>{formatearDolares(resumenMensualInteligente.totalDolares)}</strong>
+          </div>
+
+          <div className="tarjeta">
+            <span>Pago mínimo total</span>
+            <strong>{formatearDinero(resumenMensualInteligente.pagoMinimo)}</strong>
+          </div>
+
+          <div className="tarjeta">
+            <span>Próximo vencimiento</span>
+            <strong className="valor-texto">
+              {resumenMensualInteligente.proximoVencimiento
+                ? formatearFecha(
+                    resumenMensualInteligente.proximoVencimiento.fechaPago
+                  )
+                : "Sin dato"}
+            </strong>
+            {resumenMensualInteligente.proximoVencimiento && (
+              <small>
+                {resumenMensualInteligente.proximoVencimiento.entidad} ·{" "}
+                {resumenMensualInteligente.estadoProximoVencimiento}
+              </small>
+            )}
+          </div>
+
+          <div className="tarjeta">
+            <span>Banco con mayor gasto</span>
+            <strong className="valor-texto">
+              {resumenMensualInteligente.bancoMayorGasto?.nombre || "Sin dato"}
+            </strong>
+            {resumenMensualInteligente.bancoMayorGasto && (
+              <small>
+                {formatearDinero(
+                  resumenMensualInteligente.bancoMayorGasto.totalAPagar
+                )}
+              </small>
+            )}
+          </div>
+
+          <div className="tarjeta">
+            <span>Tarjeta con mayor gasto</span>
+            <strong className="valor-texto">
+              {resumenMensualInteligente.tarjetaMayorGasto?.entidad || "Sin dato"}
+            </strong>
+            {resumenMensualInteligente.tarjetaMayorGasto && (
+              <small>
+                {formatearDinero(
+                  resumenMensualInteligente.tarjetaMayorGasto.totalAPagarMes
+                )}
+              </small>
+            )}
+          </div>
+
+          <div className="tarjeta">
+            <span>Cantidad total de consumos</span>
+            <strong>{resumenMensualInteligente.cantidadConsumos}</strong>
+          </div>
+
+          <div className="tarjeta">
+            <span>Deuda futura en cuotas</span>
+            <strong>{formatearDinero(resumenMensualInteligente.deudaFutura)}</strong>
+          </div>
+        </div>
+
+        <div className="alertas-inteligentes">
+          <h3>Alertas inteligentes</h3>
+
+          <div className="alertas-grid">
+            {resumenMensualInteligente.alertas.map((alerta) => (
+              <article
+                key={`${alerta.titulo}-${alerta.detalle}`}
+                className={`alerta-card alerta-${alerta.tipo}`}
+              >
+                <span>{alerta.titulo}</span>
+                <strong>{alerta.detalle}</strong>
+              </article>
+            ))}
+
+            {resumenMensualInteligente.alertas.length === 0 && (
+              <p className="vacio">
+                No hay alertas activas con la información cargada.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="comparacion-mensual">
+          <h3>Comparación contra el mes anterior</h3>
+
+          {comparacionMesAnterior ? (
+            <>
+              <p className="texto-ayuda">
+                {formatearClaveMes(comparacionMesAnterior.mesActual.claveMes)} vs{" "}
+                {formatearClaveMes(comparacionMesAnterior.mesAnterior.claveMes)}
+              </p>
+
+              <div className="comparacion-grid">
+                <article className="alerta-card">
+                  <span>Diferencia total en pesos</span>
+                  <strong>
+                    {formatearDinero(comparacionMesAnterior.diferenciaPesos)}
+                  </strong>
+                </article>
+
+                <article className="alerta-card">
+                  <span>Diferencia total en dólares</span>
+                  <strong>
+                    {formatearDolares(comparacionMesAnterior.diferenciaDolares)}
+                  </strong>
+                </article>
+
+                <article className="alerta-card">
+                  <span>Diferencia de pago mínimo</span>
+                  <strong>
+                    {formatearDinero(comparacionMesAnterior.diferenciaPagoMinimo)}
+                  </strong>
+                </article>
+
+                <article className="alerta-card">
+                  <span>Diferencia de deuda futura</span>
+                  <strong>
+                    {formatearDinero(comparacionMesAnterior.diferenciaDeudaFutura)}
+                  </strong>
+                </article>
+              </div>
+
+              <p className="modo-edicion">{comparacionMesAnterior.estadoGasto}</p>
+            </>
+          ) : (
+            <p className="vacio">
+              No hay datos suficientes del mes anterior para comparar.
+            </p>
+          )}
+        </div>
+      </section>
+
       <section className="hero">
         <p className="etiqueta">Dashboard financiero personal</p>
         <h1>Resumen mensual completo</h1>
@@ -1890,9 +2492,9 @@ function importarTodoPDF() {
                         </span>
                       </div>
 
-                      <div className="compra-montos">
-                        <span>Valor cuota</span>
-                        <strong>
+                  <div className="compra-montos">
+                      <span>Valor cuota</span>
+                      <strong>
                           {formatearMontoConsumo(
                             gasto,
                             gasto.moneda === "USD"
@@ -1951,6 +2553,130 @@ function importarTodoPDF() {
               </p>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="encabezado-panel">
+          <div>
+            <h2>Historial por mes</h2>
+            <p className="texto-ayuda">
+              Explorá los resúmenes guardados por mes usando la fecha de pago de cada resumen.
+            </p>
+          </div>
+
+          <div className="historial-selector">
+            <select
+              value={mesHistorialSeleccionado}
+              onChange={(evento) => setMesHistorialSeleccionado(evento.target.value)}
+            >
+              {historialMensual.map((mes) => (
+                <option key={mes.claveMes} value={mes.claveMes}>
+                  {formatearClaveMes(mes.claveMes)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {historialMesActual && (
+          <>
+            <div className="cards-mini historial-cards">
+              <div>
+                <span>Total a pagar en pesos</span>
+                <strong>{formatearDinero(historialMesActual.totalPesos)}</strong>
+              </div>
+
+              <div>
+                <span>Total a pagar en dólares</span>
+                <strong>{formatearDolares(historialMesActual.totalDolares)}</strong>
+              </div>
+
+              <div>
+                <span>Pago mínimo</span>
+                <strong>{formatearDinero(historialMesActual.pagoMinimo)}</strong>
+              </div>
+
+              <div>
+                <span>Deuda futura</span>
+                <strong>{formatearDinero(historialMesActual.deudaFutura)}</strong>
+              </div>
+            </div>
+
+            <div className="historial-detalle-grid">
+              <div className="alerta-card">
+                <span>Bancos del mes</span>
+                <strong>
+                  {historialMesActual.bancos.length
+                    ? historialMesActual.bancos.join(", ")
+                    : "Sin bancos cargados"}
+                </strong>
+              </div>
+
+              <div className="alerta-card">
+                <span>Tarjetas del mes</span>
+                <strong>
+                  {historialMesActual.tarjetas.length
+                    ? historialMesActual.tarjetas.join(", ")
+                    : "Sin tarjetas cargadas"}
+                </strong>
+              </div>
+            </div>
+
+            <div className="compras-header">
+              <div>
+                <h3>Consumos del mes</h3>
+                <p className="texto-ayuda">
+                  {formatearClaveMes(historialMesActual.claveMes)} tiene{" "}
+                  {historialMesActual.consumos.length} consumos registrados.
+                </p>
+              </div>
+            </div>
+
+            <div className="compras-lista">
+              {historialMesActual.consumos.length > 0 ? (
+                historialMesActual.consumos.map((gasto) => (
+                  <div className="compra-card" key={`historial-${gasto.id}`}>
+                    <div className="compra-main">
+                      <strong>{gasto.descripcion}</strong>
+                      <span>
+                        {formatearFecha(gasto.fechaCompra)} · {gasto.tarjeta} · Cuota{" "}
+                        {gasto.cuotaActual}/{gasto.cuotas}
+                      </span>
+                    </div>
+
+                    <div className="compra-montos">
+                      <span>Valor cuota</span>
+                      <strong>
+                        {formatearMontoConsumo(
+                          gasto,
+                          gasto.moneda === "USD"
+                            ? Number(gasto.montoDolares || gasto.valorCuota || 0)
+                            : gasto.valorCuota
+                        )}
+                      </strong>
+                      <small>
+                        Total compra:{" "}
+                        {formatearMontoConsumo(
+                          gasto,
+                          gasto.moneda === "USD"
+                            ? Number(gasto.montoDolares || gasto.montoTotal || 0)
+                            : gasto.montoTotal
+                        )}
+                      </small>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="sin-compras">
+                  <strong>No hay consumos para este mes.</strong>
+                  <span>
+                    El historial sigue disponible aunque todavía no tengas varios meses cargados.
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </section>
 
@@ -2246,6 +2972,16 @@ function importarTodoPDF() {
           />
 
           <input
+            name="totalDolares"
+            type="number"
+            placeholder="Total en dólares"
+            value={formResumen.totalDolares}
+            onChange={actualizarResumen}
+            min="0"
+            step="0.01"
+          />
+
+          <input
             name="pagoMinimo"
             type="number"
             placeholder="Pago mínimo"
@@ -2272,6 +3008,9 @@ function importarTodoPDF() {
                     Total: {formatearDinero(resumen.totalPagar)} · Mínimo:{" "}
                     {formatearDinero(resumen.pagoMinimo)}
                   </span>
+                  {Number(resumen.totalDolares || 0) > 0 && (
+                    <span>Dólares: {formatearDolares(resumen.totalDolares)}</span>
+                  )}
                 </div>
 
                 <div className="acciones">
@@ -2339,7 +3078,14 @@ function importarTodoPDF() {
                               ? Number(gasto.montoDolares || gasto.valorCuota || 0)
                               : gasto.valorCuota
                           )}</td>
-                      <td>{formatearDinero(gasto.montoTotal)}</td>
+                      <td>
+                        {formatearMontoConsumo(
+                          gasto,
+                          gasto.moneda === "USD"
+                            ? Number(gasto.montoDolares || gasto.montoTotal || 0)
+                            : gasto.montoTotal
+                        )}
+                      </td>
                       <td>{formatearMes(gasto.fechaFinalizacion)}</td>
                       <td>
                         <div className="acciones">

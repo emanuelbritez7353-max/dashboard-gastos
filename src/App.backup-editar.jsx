@@ -161,30 +161,6 @@ export default function App() {
     });
   }
 
-  function cargarGastoParaEditar(gasto) {
-  setFormulario({
-    id: gasto.id,
-    descripcion: gasto.descripcion,
-    categoria: gasto.categoria,
-    montoTotal: gasto.montoTotal,
-    cuotas: gasto.cuotas,
-    cuotaActual: gasto.cuotaActual,
-    fechaCompra: gasto.fechaCompra,
-    tarjeta: gasto.tarjeta,
-  });
-}
-
-function cancelarEdicion() {
-  setFormulario({
-    descripcion: "",
-    categoria: "",
-    montoTotal: "",
-    cuotas: "",
-    cuotaActual: "",
-    fechaCompra: "",
-    tarjeta: "",
-  });
-}
   function eliminarGasto(id) {
     const confirmar = window.confirm("¿Querés eliminar este gasto?");
 

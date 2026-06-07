@@ -61,10 +61,9 @@ function formatearMes(fecha) {
   });
 }
 
-export default function App() {
-  const [gastos, setGastos] = useState(cargarGastosGuardados);
-
-  const [formulario, setFormulario] = useState({
+function limpiarFormulario() {
+  return {
+    id: "",
     descripcion: "",
     categoria: "",
     montoTotal: "",
@@ -72,7 +71,12 @@ export default function App() {
     cuotaActual: "",
     fechaCompra: "",
     tarjeta: "",
-  });
+  };
+}
+
+export default function App() {
+  const [gastos, setGastos] = useState(cargarGastosGuardados);
+  const [formulario, setFormulario] = useState(limpiarFormulario());
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gastos));
@@ -134,11 +138,11 @@ export default function App() {
     });
   }
 
-  function agregarGasto(evento) {
+  function guardarGasto(evento) {
     evento.preventDefault();
 
-    const nuevoGasto = {
-      id: crypto.randomUUID(),
+    const gastoGuardado = {
+      id: formulario.id || crypto.randomUUID(),
       descripcion: formulario.descripcion,
       categoria: formulario.categoria,
       montoTotal: Number(formulario.montoTotal),
@@ -148,17 +152,44 @@ export default function App() {
       tarjeta: formulario.tarjeta,
     };
 
-    setGastos([...gastos, nuevoGasto]);
+    if (gastoGuardado.cuotaActual > gastoGuardado.cuotas) {
+      alert("La cuota actual no puede ser mayor que la cantidad total de cuotas.");
+      return;
+    }
 
+    if (formulario.id) {
+      const gastosActualizados = gastos.map((gasto) =>
+        gasto.id === formulario.id ? gastoGuardado : gasto
+      );
+
+      setGastos(gastosActualizados);
+    } else {
+      setGastos([...gastos, gastoGuardado]);
+    }
+
+    setFormulario(limpiarFormulario());
+  }
+
+  function cargarGastoParaEditar(gasto) {
     setFormulario({
-      descripcion: "",
-      categoria: "",
-      montoTotal: "",
-      cuotas: "",
-      cuotaActual: "",
-      fechaCompra: "",
-      tarjeta: "",
+      id: gasto.id,
+      descripcion: gasto.descripcion,
+      categoria: gasto.categoria,
+      montoTotal: gasto.montoTotal,
+      cuotas: gasto.cuotas,
+      cuotaActual: gasto.cuotaActual,
+      fechaCompra: gasto.fechaCompra,
+      tarjeta: gasto.tarjeta,
     });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function cancelarEdicion() {
+    setFormulario(limpiarFormulario());
   }
 
   function eliminarGasto(id) {
@@ -182,6 +213,7 @@ export default function App() {
     }
 
     setGastos([]);
+    setFormulario(limpiarFormulario());
   }
 
   return (
@@ -213,8 +245,8 @@ export default function App() {
       </section>
 
       <section className="grid">
-        <form className="panel" onSubmit={agregarGasto}>
-          <h2>Cargar gasto</h2>
+        <form className="panel" onSubmit={guardarGasto}>
+          <h2>{formulario.id ? "Editar gasto" : "Cargar gasto"}</h2>
 
           <input
             name="descripcion"
@@ -238,15 +270,17 @@ export default function App() {
             placeholder="Monto total"
             value={formulario.montoTotal}
             onChange={actualizarFormulario}
+            min="1"
             required
           />
 
           <input
             name="cuotas"
             type="number"
-            placeholder="Cantidad de cuotas"
+            placeholder="Cantidad total de cuotas"
             value={formulario.cuotas}
             onChange={actualizarFormulario}
+            min="1"
             required
           />
 
@@ -256,6 +290,7 @@ export default function App() {
             placeholder="Cuota actual"
             value={formulario.cuotaActual}
             onChange={actualizarFormulario}
+            min="0"
             required
           />
 
@@ -275,7 +310,19 @@ export default function App() {
             required
           />
 
-          <button type="submit">Agregar gasto</button>
+          <button type="submit">
+            {formulario.id ? "Guardar cambios" : "Agregar gasto"}
+          </button>
+
+          {formulario.id && (
+            <button
+              type="button"
+              className="boton-secundario"
+              onClick={cancelarEdicion}
+            >
+              Cancelar edición
+            </button>
+          )}
         </form>
 
         <section className="panel">
@@ -337,12 +384,21 @@ export default function App() {
                   <td>{gasto.cuotasPendientes}</td>
                   <td>{formatearMes(gasto.fechaFinalizacion)}</td>
                   <td>
-                    <button
-                      className="boton-eliminar"
-                      onClick={() => eliminarGasto(gasto.id)}
-                    >
-                      Eliminar
-                    </button>
+                    <div className="acciones">
+                      <button
+                        className="boton-editar"
+                        onClick={() => cargarGastoParaEditar(gasto)}
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        className="boton-eliminar"
+                        onClick={() => eliminarGasto(gasto.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

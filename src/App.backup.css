@@ -154,22 +154,6 @@ td {
   color: #e5e7eb;
 }
 
-.acciones {
-  display: flex;
-  gap: 8px;
-}
-
-.boton-editar {
-  background: #1d4ed8;
-  color: #dbeafe;
-  padding: 9px 12px;
-  font-size: 14px;
-}
-
-.boton-editar:hover {
-  background: #2563eb;
-}
-
 .boton-eliminar {
   background: #7f1d1d;
   color: #fee2e2;
@@ -189,15 +173,6 @@ td {
   font-size: 14px;
 }
 
-.boton-secundario {
-  background: #334155;
-  color: #e5e7eb;
-}
-
-.boton-secundario:hover {
-  background: #475569;
-}
-
 .vacio {
   color: #9ca3af;
   text-align: center;
@@ -215,10 +190,6 @@ td {
 
   .encabezado-panel {
     align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .acciones {
     flex-direction: column;
   }
 }

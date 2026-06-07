@@ -104,6 +104,13 @@ button:hover {
   background: #16a34a;
 }
 
+.encabezado-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .lista {
   display: flex;
   flex-direction: column;
@@ -147,6 +154,30 @@ td {
   color: #e5e7eb;
 }
 
+.boton-eliminar {
+  background: #7f1d1d;
+  color: #fee2e2;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+
+.boton-eliminar:hover,
+.boton-peligro:hover {
+  background: #991b1b;
+}
+
+.boton-peligro {
+  background: #7f1d1d;
+  color: #fee2e2;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.vacio {
+  color: #9ca3af;
+  text-align: center;
+}
+
 @media (max-width: 800px) {
   .resumen,
   .grid {
@@ -155,5 +186,10 @@ td {
 
   h1 {
     font-size: 32px;
+  }
+
+  .encabezado-panel {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

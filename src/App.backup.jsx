@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./App.css";
-
-const STORAGE_KEY = "dashboard_gastos";
 
 const gastosIniciales = [
   {
-    id: crypto.randomUUID(),
     descripcion: "Celular Samsung",
     categoria: "Tecnología",
     montoTotal: 600000,
@@ -15,7 +12,6 @@ const gastosIniciales = [
     tarjeta: "Visa BBVA",
   },
   {
-    id: crypto.randomUUID(),
     descripcion: "Préstamo personal",
     categoria: "Préstamo",
     montoTotal: 1200000,
@@ -25,20 +21,6 @@ const gastosIniciales = [
     tarjeta: "Santander",
   },
 ];
-
-function cargarGastosGuardados() {
-  const datosGuardados = localStorage.getItem(STORAGE_KEY);
-
-  if (!datosGuardados) {
-    return gastosIniciales;
-  }
-
-  try {
-    return JSON.parse(datosGuardados);
-  } catch {
-    return gastosIniciales;
-  }
-}
 
 function formatearDinero(valor) {
   return new Intl.NumberFormat("es-AR", {
@@ -62,7 +44,7 @@ function formatearMes(fecha) {
 }
 
 export default function App() {
-  const [gastos, setGastos] = useState(cargarGastosGuardados);
+  const [gastos, setGastos] = useState(gastosIniciales);
 
   const [formulario, setFormulario] = useState({
     descripcion: "",
@@ -73,10 +55,6 @@ export default function App() {
     fechaCompra: "",
     tarjeta: "",
   });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gastos));
-  }, [gastos]);
 
   const gastosCalculados = useMemo(() => {
     return gastos.map((gasto) => {
@@ -138,7 +116,6 @@ export default function App() {
     evento.preventDefault();
 
     const nuevoGasto = {
-      id: crypto.randomUUID(),
       descripcion: formulario.descripcion,
       categoria: formulario.categoria,
       montoTotal: Number(formulario.montoTotal),
@@ -159,29 +136,6 @@ export default function App() {
       fechaCompra: "",
       tarjeta: "",
     });
-  }
-
-  function eliminarGasto(id) {
-    const confirmar = window.confirm("¿Querés eliminar este gasto?");
-
-    if (!confirmar) {
-      return;
-    }
-
-    const gastosActualizados = gastos.filter((gasto) => gasto.id !== id);
-    setGastos(gastosActualizados);
-  }
-
-  function borrarTodo() {
-    const confirmar = window.confirm(
-      "¿Seguro que querés borrar todos los gastos cargados?"
-    );
-
-    if (!confirmar) {
-      return;
-    }
-
-    setGastos([]);
   }
 
   return (
@@ -279,35 +233,21 @@ export default function App() {
         </form>
 
         <section className="panel">
-          <div className="encabezado-panel">
-            <h2>Proyección futura</h2>
-          </div>
+          <h2>Proyección futura</h2>
 
           <div className="lista">
-            {proyeccion.length === 0 ? (
-              <p className="vacio">No hay cuotas futuras cargadas.</p>
-            ) : (
-              proyeccion.map((item) => (
-                <div className="fila" key={item.mes}>
-                  <span>{item.mes}</span>
-                  <strong>{formatearDinero(item.total)}</strong>
-                </div>
-              ))
-            )}
+            {proyeccion.map((item) => (
+              <div className="fila" key={item.mes}>
+                <span>{item.mes}</span>
+                <strong>{formatearDinero(item.total)}</strong>
+              </div>
+            ))}
           </div>
         </section>
       </section>
 
       <section className="panel">
-        <div className="encabezado-panel">
-          <h2>Cuotas activas</h2>
-
-          {gastos.length > 0 && (
-            <button className="boton-peligro" onClick={borrarTodo}>
-              Borrar todo
-            </button>
-          )}
-        </div>
+        <h2>Cuotas activas</h2>
 
         <div className="tabla">
           <table>
@@ -320,13 +260,12 @@ export default function App() {
                 <th>Valor cuota</th>
                 <th>Pendientes</th>
                 <th>Finaliza</th>
-                <th>Acción</th>
               </tr>
             </thead>
 
             <tbody>
-              {gastosCalculados.map((gasto) => (
-                <tr key={gasto.id}>
+              {gastosCalculados.map((gasto, index) => (
+                <tr key={index}>
                   <td>{gasto.descripcion}</td>
                   <td>{gasto.categoria}</td>
                   <td>{gasto.tarjeta}</td>
@@ -336,24 +275,8 @@ export default function App() {
                   <td>{formatearDinero(gasto.valorCuota)}</td>
                   <td>{gasto.cuotasPendientes}</td>
                   <td>{formatearMes(gasto.fechaFinalizacion)}</td>
-                  <td>
-                    <button
-                      className="boton-eliminar"
-                      onClick={() => eliminarGasto(gasto.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </td>
                 </tr>
               ))}
-
-              {gastosCalculados.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="vacio">
-                    No hay gastos cargados.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

@@ -26,16 +26,6 @@ const gastosIniciales = [
   },
 ];
 
-function normalizarGastos(gastos) {
-  return gastos.map((gasto) => ({
-    ...gasto,
-    id: gasto.id || crypto.randomUUID(),
-    montoTotal: Number(gasto.montoTotal),
-    cuotas: Number(gasto.cuotas),
-    cuotaActual: Number(gasto.cuotaActual),
-  }));
-}
-
 function cargarGastosGuardados() {
   const datosGuardados = localStorage.getItem(STORAGE_KEY);
 
@@ -44,7 +34,7 @@ function cargarGastosGuardados() {
   }
 
   try {
-    return normalizarGastos(JSON.parse(datosGuardados));
+    return JSON.parse(datosGuardados);
   } catch {
     return gastosIniciales;
   }
@@ -55,7 +45,7 @@ function formatearDinero(valor) {
     style: "currency",
     currency: "ARS",
     maximumFractionDigits: 0,
-  }).format(valor || 0);
+  }).format(valor);
 }
 
 function sumarMeses(fecha, meses) {
@@ -168,11 +158,11 @@ export default function App() {
     }
 
     if (formulario.id) {
-      setGastos(
-        gastos.map((gasto) =>
-          gasto.id === formulario.id ? gastoGuardado : gasto
-        )
+      const gastosActualizados = gastos.map((gasto) =>
+        gasto.id === formulario.id ? gastoGuardado : gasto
       );
+
+      setGastos(gastosActualizados);
     } else {
       setGastos([...gastos, gastoGuardado]);
     }
@@ -209,7 +199,8 @@ export default function App() {
       return;
     }
 
-    setGastos(gastos.filter((gasto) => gasto.id !== id));
+    const gastosActualizados = gastos.filter((gasto) => gasto.id !== id);
+    setGastos(gastosActualizados);
   }
 
   function borrarTodo() {
@@ -256,12 +247,6 @@ export default function App() {
       <section className="grid">
         <form className="panel" onSubmit={guardarGasto}>
           <h2>{formulario.id ? "Editar gasto" : "Cargar gasto"}</h2>
-
-          {formulario.id && (
-            <p className="modo-edicion">
-              Editando: <strong>{formulario.descripcion}</strong>
-            </p>
-          )}
 
           <input
             name="descripcion"
@@ -401,7 +386,6 @@ export default function App() {
                   <td>
                     <div className="acciones">
                       <button
-                        type="button"
                         className="boton-editar"
                         onClick={() => cargarGastoParaEditar(gasto)}
                       >
@@ -409,7 +393,6 @@ export default function App() {
                       </button>
 
                       <button
-                        type="button"
                         className="boton-eliminar"
                         onClick={() => eliminarGasto(gasto.id)}
                       >

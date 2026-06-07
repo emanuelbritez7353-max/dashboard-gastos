@@ -222,3 +222,11 @@ td {
     flex-direction: column;
   }
 }
+
+.modo-edicion {
+  background: #1e3a8a;
+  color: #dbeafe;
+  padding: 12px;
+  border-radius: 12px;
+  margin: 0;
+}
